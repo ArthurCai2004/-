@@ -1,0 +1,204 @@
+
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+    <title>五十个点位展示</title>
+    <script type="text/javascript" src="https://api.map.baidu.com/api?v=3.0&ak=wE7L9NflFWyPXutp6zeW1gw1o2BRTdxX"></script>
+    <style type="text/css">
+        body, html, #container {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            margin: 0;
+            font-family: "微软雅黑", Arial, sans-serif;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 999;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        label, select, button {
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        select {
+            width: 200px;
+            padding: 5px;
+        }
+        button {
+            padding: 5px 10px;
+            cursor: pointer;
+            border: none;
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #result {
+            margin-top: 10px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+
+    <div id="controls">
+        <label for="singlePoint">选择点位：</label>
+        <select id="singlePoint"></select><br>
+
+        <button onclick="displaySinglePoint()">查询单个点位</button>
+        <div id="result">位置：--</div><br>
+
+        <label for="startPoint">选择起点：</label>
+        <select id="startPoint"></select><br>
+
+        <label for="endPoint">选择终点：</label>
+        <select id="endPoint"></select><br>
+
+        <label for="mode">选择模式：</label>
+        <select id="mode">
+            <option value="driving">驾车</option>
+            <option value="walking">步行</option>
+            <option value="riding">骑行</option>
+        </select><br>
+
+        <button onclick="calculateRoute()">计算路径</button>
+        <div id="resultRoute">时间估计：--</div>
+    </div>
+
+    <script type="text/javascript">
+        var map = new BMap.Map("container");
+        map.centerAndZoom(new BMap.Point(121.4692, 31.2439), 15);
+        map.enableScrollWheelZoom(true);
+
+        var driving, walking, riding;
+        var markers = [];
+        var singleMarker;
+
+        var campusPoints = [{"name": "上海市宝山区大场镇新世纪大学生村", "coords": {"lat": 31.31888245372559, "lng": 121.39369448338118}}, {"name": "上海市宝山区大场镇上大路798号上大南区", "coords": {"lat": 31.316794405905963, "lng": 121.39549605271309}}, {"name": "上海市宝山区大场镇上大南区", "coords": {"lat": 31.314246589874028, "lng": 121.39564609569504}}, {"name": "上海市宝山区大场镇上海大学宝山校区(南2门)上海大学(宝山校区)", "coords": {"lat": 31.317252886415865, "lng": 121.395946912505}}, {"name": "上海市宝山区大场镇上海大学宝山校区高尔夫球场上海大学(宝山校区)", "coords": {"lat": 31.318939364335492, "lng": 121.39547498813027}}, {"name": "上海市宝山区大场镇西外环路上海大学(宝山校区)", "coords": {"lat": 31.319160330720052, "lng": 121.3963757309278}}, {"name": "上海市宝山区大场镇佳乐BAKERY上海大学(宝山校区)", "coords": {"lat": 31.32161453453431, "lng": 121.39472410953996}}, {"name": "上海市宝山区大场镇上海大学宝山校区益新楼上海大学(宝山校区)", "coords": {"lat": 31.321615731954836, "lng": 121.39583880033656}}, {"name": "上海市宝山区大场镇西外环路上海大学(宝山校区)", "coords": {"lat": 31.32205469170265, "lng": 121.3948740538046}}, {"name": "上海市宝山区大场镇上海大学宝山校区山明楼", "coords": {"lat": 31.32341190968146, "lng": 121.39508795099688}}, {"name": "上海市宝山区大场镇西外环路上海大学(宝山校区)", "coords": {"lat": 31.32469494480163, "lng": 121.39513089823454}}, {"name": "上海市宝山区大场镇锦秋路上海大学(宝山校区)", "coords": {"lat": 31.32634516157257, "lng": 121.39534578647455}}, {"name": "上海市宝山区大场镇上海大学宝山校区(北门)上海大学宝山校区校医院", "coords": {"lat": 31.32589606122899, "lng": 121.39524882752153}}, {"name": "上海市宝山区大场镇锦秋路382号上海大学(宝山校区)", "coords": {"lat": 31.324358467954443, "lng": 121.39747425816638}}, {"name": "上海市宝山区大场镇上海大学M学生公寓上海大学(宝山校区)", "coords": {"lat": 31.322120714587726, "lng": 121.3967565292415}}, {"name": "上海市宝山区大场镇上海生乐教育连锁餐厅上海大学(宝山校区)", "coords": {"lat": 31.325027889730407, "lng": 121.39787112652243}}, {"name": "上海市宝山区大场镇锦秋路386号上海大学(宝山校区)", "coords": {"lat": 31.324910753825478, "lng": 121.39959864918264}}, {"name": "上海市宝山区大场镇上海大学游泳馆上海大学(宝山校区)", "coords": {"lat": 31.325126829633586, "lng": 121.40059636407987}}, {"name": "上海市宝山区大场镇上海大学大学生艺术团上海大学宝山校区音乐学院", "coords": {"lat": 31.32417409282664, "lng": 121.40083232852201}}, {"name": "上海市宝山区大场镇上海大学体育中心体育馆上海大学宝山校区体育馆", "coords": {"lat": 31.32523806978167, "lng": 121.40174404010895}}, {"name": "上海市宝山区大场镇上海大学宝山校区1号体育场", "coords": {"lat": 31.325147568862434, "lng": 121.40312765613493}}, {"name": "上海市宝山区大场镇上海大学礼堂会议厅上海大学(宝山校区)", "coords": {"lat": 31.3235703859815, "lng": 121.40202301526622}}, {"name": "上海市宝山区大场镇体育馆路上海大学(宝山校区)", "coords": {"lat": 31.32347639124049, "lng": 121.40017753348266}}, {"name": "上海市宝山区大场镇上海大学宝山校区图书馆上海大学(宝山校区)", "coords": {"lat": 31.322512952491717, "lng": 121.3988369379654}}, {"name": "上海市宝山区大场镇泮池南路上海大学(宝山校区)", "coords": {"lat": 31.319662035619135, "lng": 121.39889101513427}}, {"name": "上海市宝山区大场镇泮池南路上海大学(宝山校区)", "coords": {"lat": 31.320691482537537, "lng": 121.39745838031747}}, {"name": "上海市宝山区大场镇泮池南路上海大学(宝山校区)", "coords": {"lat": 31.31858625470769, "lng": 121.4000117380088}}, {"name": "上海市宝山区大场镇东外环路上海大学(宝山校区)", "coords": {"lat": 31.318002764768504, "lng": 121.40232811054855}}, {"name": "上海市宝山区大场镇上海大学宝山校区美术学院建筑系上海大学(宝山校区)", "coords": {"lat": 31.319577869047972, "lng": 121.40151328661567}}, {"name": "上海市宝山区大场镇东外环路上海大学(宝山校区)", "coords": {"lat": 31.319049243930397, "lng": 121.40370169203504}}, {"name": "上海市宝山区大场镇上海大学宝山校区溯园上海大学(宝山校区)", "coords": {"lat": 31.31819184939489, "lng": 121.40333082393354}}, {"name": "上海市宝山区大场镇上海大学宝山校区BJ楼", "coords": {"lat": 31.32015231535947, "lng": 121.4028538932486}}, {"name": "上海市宝山区大场镇上海大学宝山校区DJ楼上海大学(宝山校区)", "coords": {"lat": 31.321031599578458, "lng": 121.40220004750348}}, {"name": "上海市宝山区大场镇上海大学宝山校区名人广场上海大学(宝山校区)", "coords": {"lat": 31.320195715732623, "lng": 121.4004515628306}}, {"name": "上海市宝山区大场镇上海大学体育中心上海大学宝山校区J楼", "coords": {"lat": 31.321020591853486, "lng": 121.4003435661949}}, {"name": "上海市宝山区大场镇SIEMENS-UGS CORP&上海大学UGNX授权培训中心上海大学(宝山校区)", "coords": {"lat": 31.321958926879034, "lng": 121.40343267280376}}, {"name": "上海市宝山区大场镇东外环路上海大学(宝山校区)", "coords": {"lat": 31.322076601295482, "lng": 121.40221001095894}}, {"name": "上海市宝山区大场镇体育馆路上海大学(宝山校区)", "coords": {"lat": 31.32425031463086, "lng": 121.40380849411777}}, {"name": "上海市宝山区大场镇上海大学宝山校区(东2门)上海大学(宝山校区)", "coords": {"lat": 31.320098710717787, "lng": 121.40414053491584}}, {"name": "上海市宝山区大场镇上大路599号上海大学(宝山校区)", "coords": {"lat": 31.318652237550275, "lng": 121.40553519133921}}, {"name": "上海市宝山区大场镇上海大学宝山校区材料基因组工程研究院大楼上海大学(宝山校区)", "coords": {"lat": 31.320889337255892, "lng": 121.40656482943521}}, {"name": "上海市宝山区大场镇上海大学宝山校区法学院上海大学(宝山校区)", "coords": {"lat": 31.31978986024189, "lng": 121.4070367326949}}, {"name": "上海市宝山区大场镇南陈路351号上海大学(宝山校区)", "coords": {"lat": 31.32264822647866, "lng": 121.40555705541333}}, {"name": "上海市宝山区大场镇上海大学宝山校区机自大楼", "coords": {"lat": 31.3219848374282, "lng": 121.40611392055116}}, {"name": "上海市宝山区大场镇上海大学宝山校区第六学生食堂上海大学(宝山校区)", "coords": {"lat": 31.320654590157954, "lng": 121.40495528857203}}, {"name": "上海市宝山区大场镇上海大学宝山校区钱伟长图书馆", "coords": {"lat": 31.32015175454082, "lng": 121.40602300549041}}, {"name": "上海市宝山区大场镇上海大学宝山校区先进凝固技术中心上海大学(宝山校区)", "coords": {"lat": 31.32274428651084, "lng": 121.40469229476804}}, {"name": "上海市宝山区大场镇南陈路367号上海大学(宝山校区)", "coords": {"lat": 31.323946640047698, "lng": 121.40594790413671}}, {"name": "上海市宝山区大场镇永福庵", "coords": {"lat": 31.323404315527625, "lng": 121.40472426463168}}, {"name": "上海市宝山区大场镇上海大学宝山校区环化楼上海大学(宝山校区)", "coords": {"lat": 31.32509388928151, "lng": 121.40710554253336}}, {"name": "上海市宝山区大场镇锦秋路402号上海大学(宝山校区)", "coords": {"lat": 31.327181075730458, "lng": 121.4054539402099}}];
+
+        function addCampusPoints() {
+            var startSelect = document.getElementById("startPoint");
+            var endSelect = document.getElementById("endPoint");
+            var singleSelect = document.getElementById("singlePoint");
+
+            campusPoints.forEach(function(point, index) {
+                var marker = new BMap.Marker(new BMap.Point(point.coords.lng, point.coords.lat));
+                map.addOverlay(marker);
+                markers.push(marker);
+
+                var optionStart = document.createElement("option");
+                optionStart.text = point.name;
+                optionStart.value = index;
+                startSelect.add(optionStart);
+
+                var optionEnd = document.createElement("option");
+                optionEnd.text = point.name;
+                optionEnd.value = index;
+                endSelect.add(optionEnd);
+
+                var optionSingle = document.createElement("option");
+                optionSingle.text = point.name;
+                optionSingle.value = index;
+                singleSelect.add(optionSingle);
+            });
+        }
+
+        function clearMap() {
+            if (driving) driving.clearResults();
+            if (walking) walking.clearResults();
+            if (riding) riding.clearResults();
+
+            markers.forEach(function(marker) {
+                map.removeOverlay(marker);
+            });
+            if (singleMarker) {
+                map.removeOverlay(singleMarker);
+            }
+            markers = [];
+        }
+
+        function displaySinglePoint() {
+            var singleIndex = document.getElementById("singlePoint").value;
+            var resultDiv = document.getElementById("result");
+            var selectedPoint = campusPoints[singleIndex];
+
+            if (singleMarker) {
+                map.removeOverlay(singleMarker);
+            }
+
+            var icon = new BMap.Icon("https://developers.google.com/maps/documentation/javascript/examples/full/images/beachflag.png", 
+                new BMap.Size(20, 32));  // 使用不同颜色或样式的图标来显示查询结果
+            singleMarker = new BMap.Marker(new BMap.Point(selectedPoint.coords.lng, selectedPoint.coords.lat), { icon: icon });
+            map.addOverlay(singleMarker);
+            map.centerAndZoom(new BMap.Point(selectedPoint.coords.lng, selectedPoint.coords.lat), 18);
+
+            resultDiv.innerHTML = "位置：" + selectedPoint.name;
+        }
+
+        function calculateRoute() {
+            clearMap();
+
+            var startIndex = document.getElementById("startPoint").value;
+            var endIndex = document.getElementById("endPoint").value;
+            var mode = document.getElementById("mode").value;
+            var resultDivRoute = document.getElementById("resultRoute");
+            resultDivRoute.innerHTML = "时间估计：--";
+
+            var startPoint = new BMap.Point(campusPoints[startIndex].coords.lng, campusPoints[startIndex].coords.lat);
+            var endPoint = new BMap.Point(campusPoints[endIndex].coords.lng, campusPoints[endIndex].coords.lat);
+
+            if (mode === "driving") {
+                driving = new BMap.DrivingRoute(map, {
+                    renderOptions: { map: map, autoViewport: true },
+                    onSearchComplete: function(result) {
+                        if (driving.getStatus() === BMAP_STATUS_SUCCESS) {
+                            var plan = result.getPlan(0);
+                            var duration = plan.getDuration(true);
+                            resultDivRoute.innerHTML = "驾车时间估计：" + duration;
+                        }
+                    }
+                });
+                driving.search(startPoint, endPoint);
+            } else if (mode === "walking") {
+                walking = new BMap.WalkingRoute(map, {
+                    renderOptions: { map: map, autoViewport: true },
+                    onSearchComplete: function(result) {
+                        if (walking.getStatus() === BMAP_STATUS_SUCCESS) {
+                            var plan = result.getPlan(0);
+                            var duration = plan.getDuration(true);
+                            resultDivRoute.innerHTML = "步行时间估计：" + duration;
+                        }
+                    }
+                });
+                walking.search(startPoint, endPoint);
+            } else if (mode === "riding") {
+                riding = new BMap.RidingRoute(map, {
+                    renderOptions: { map: map, autoViewport: true },
+                    onSearchComplete: function(result) {
+                        if (riding.getStatus() === BMAP_STATUS_SUCCESS) {
+                            var plan = result.getPlan(0);
+                            var duration = plan.getDuration(true);
+                            resultDivRoute.innerHTML = "骑行时间估计：" + duration;
+                        }
+                    }
+                });
+                riding.search(startPoint, endPoint);
+            }
+        }
+
+        addCampusPoints();
+    </script>
+</body>
+</html>
